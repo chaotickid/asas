@@ -36,8 +36,8 @@ interface LinkEntry {
   orgId: string;
   label: string;
   url: string;
-  username: string;
-  password: string;
+  username?: string;
+  password?: string;
   createdAt: number;
 }
 
@@ -67,7 +67,7 @@ export default function App() {
 
   // Form states
   const [orgFormData, setOrgFormData] = useState({ name: '', description: '' });
-  const [linkFormData, setLinkFormData] = useState({ label: '', url: '', username: '', password: '' });
+  const [linkFormData, setLinkFormData] = useState({ label: '', url: '', username: '', password: '', hasCredentials: false });
 
   // Load from localStorage
   useEffect(() => {
@@ -104,13 +104,20 @@ export default function App() {
     e.preventDefault();
     if (!activeOrgId || !linkFormData.label || !linkFormData.url) return;
 
+    const dataToSave = {
+      label: linkFormData.label,
+      url: linkFormData.url,
+      username: linkFormData.hasCredentials ? linkFormData.username : undefined,
+      password: linkFormData.hasCredentials ? linkFormData.password : undefined,
+    };
+
     if (editingLink) {
-      setLinks(links.map(l => l.id === editingLink.id ? { ...l, ...linkFormData } : l));
+      setLinks(links.map(l => l.id === editingLink.id ? { ...l, ...dataToSave } : l));
     } else {
       const newLink: LinkEntry = {
         id: crypto.randomUUID(),
         orgId: activeOrgId,
-        ...linkFormData,
+        ...dataToSave,
         createdAt: Date.now()
       };
       setLinks([newLink, ...links]);
@@ -127,7 +134,7 @@ export default function App() {
   const closeLinkModal = () => {
     setIsLinkModalOpen(false);
     setEditingLink(null);
-    setLinkFormData({ label: '', url: '', username: '', password: '' });
+    setLinkFormData({ label: '', url: '', username: '', password: '', hasCredentials: false });
   };
 
   const deleteOrg = (id: string) => {
@@ -356,36 +363,52 @@ export default function App() {
 
                       <div className="flex flex-wrap items-center gap-4 md:gap-8">
                         {/* Credentials */}
-                        <div className="flex items-center gap-6">
-                          <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Username</span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-medium text-zinc-700">{link.username}</span>
-                              <button onClick={() => copyToClipboard(link.username, `${link.id}-u`)} className="text-zinc-300 hover:text-zinc-900">
-                                {copiedId === `${link.id}-u` ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                              </button>
-                            </div>
+                        {(link.username || link.password) && (
+                          <div className="flex items-center gap-6">
+                            {link.username && (
+                              <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Username</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium text-zinc-700">{link.username}</span>
+                                  <button onClick={() => copyToClipboard(link.username!, `${link.id}-u`)} className="text-zinc-300 hover:text-zinc-900">
+                                    {copiedId === `${link.id}-u` ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+                            {link.password && (
+                              <div className="flex flex-col">
+                                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Password</span>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-mono font-medium text-zinc-700">
+                                    {showPasswords[link.id] ? link.password : '••••••••'}
+                                  </span>
+                                  <button onClick={() => setShowPasswords(p => ({...p, [link.id]: !p[link.id]}))} className="text-zinc-300 hover:text-zinc-900">
+                                    {showPasswords[link.id] ? <EyeOff size={14} /> : <Eye size={14} />}
+                                  </button>
+                                  <button onClick={() => copyToClipboard(link.password!, `${link.id}-p`)} className="text-zinc-300 hover:text-zinc-900">
+                                    {copiedId === `${link.id}-p` ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                          <div className="flex flex-col">
-                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider mb-1">Password</span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-mono font-medium text-zinc-700">
-                                {showPasswords[link.id] ? link.password : '••••••••'}
-                              </span>
-                              <button onClick={() => setShowPasswords(p => ({...p, [link.id]: !p[link.id]}))} className="text-zinc-300 hover:text-zinc-900">
-                                {showPasswords[link.id] ? <EyeOff size={14} /> : <Eye size={14} />}
-                              </button>
-                              <button onClick={() => copyToClipboard(link.password, `${link.id}-p`)} className="text-zinc-300 hover:text-zinc-900">
-                                {copiedId === `${link.id}-p` ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
+                        )}
 
                         {/* Actions */}
                         <div className="flex items-center gap-2 ml-auto">
                           <button 
-                            onClick={() => { setEditingLink(link); setLinkFormData({ label: link.label, url: link.url, username: link.username, password: link.password }); setIsLinkModalOpen(true); }}
+                            onClick={() => { 
+                              setEditingLink(link); 
+                              setLinkFormData({ 
+                                label: link.label, 
+                                url: link.url, 
+                                username: link.username || '', 
+                                password: link.password || '',
+                                hasCredentials: !!(link.username || link.password)
+                              }); 
+                              setIsLinkModalOpen(true); 
+                            }}
                             className="p-2 text-zinc-400 hover:text-zinc-900 hover:bg-zinc-100 rounded-xl transition-all"
                           >
                             <Edit3 size={18} />
@@ -469,16 +492,38 @@ export default function App() {
                   <label className="block text-sm font-semibold text-zinc-700 mb-1.5">URL</label>
                   <input type="text" required placeholder="e.g. https://example.com" className="input-field" value={linkFormData.url} onChange={e => setLinkFormData({...linkFormData, url: e.target.value})} />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Username</label>
-                    <input type="text" required placeholder="User" className="input-field" value={linkFormData.username} onChange={e => setLinkFormData({...linkFormData, username: e.target.value})} />
+                
+                <div className="flex items-center justify-between p-3 bg-zinc-50 rounded-2xl border border-zinc-100">
+                  <div className="flex items-center gap-2">
+                    <Shield size={16} className="text-zinc-400" />
+                    <span className="text-sm font-semibold text-zinc-700">Include Credentials</span>
                   </div>
-                  <div>
-                    <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Password</label>
-                    <input type="password" required placeholder="••••" className="input-field" value={linkFormData.password} onChange={e => setLinkFormData({...linkFormData, password: e.target.value})} />
-                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setLinkFormData(prev => ({ ...prev, hasCredentials: !prev.hasCredentials }))}
+                    className={`w-10 h-5 rounded-full transition-colors relative ${linkFormData.hasCredentials ? 'bg-zinc-900' : 'bg-zinc-200'}`}
+                  >
+                    <div className={`absolute top-1 w-3 h-3 bg-white rounded-full transition-transform ${linkFormData.hasCredentials ? 'translate-x-6' : 'translate-x-1'}`} />
+                  </button>
                 </div>
+
+                {linkFormData.hasCredentials && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="grid grid-cols-2 gap-4 overflow-hidden"
+                  >
+                    <div>
+                      <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Username</label>
+                      <input type="text" required={linkFormData.hasCredentials} placeholder="User" className="input-field" value={linkFormData.username} onChange={e => setLinkFormData({...linkFormData, username: e.target.value})} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-semibold text-zinc-700 mb-1.5">Password</label>
+                      <input type="password" required={linkFormData.hasCredentials} placeholder="••••" className="input-field" value={linkFormData.password} onChange={e => setLinkFormData({...linkFormData, password: e.target.value})} />
+                    </div>
+                  </motion.div>
+                )}
                 <div className="pt-4 flex gap-3">
                   <button type="button" onClick={closeLinkModal} className="flex-1 btn-secondary">Cancel</button>
                   <button type="submit" className="flex-1 btn-primary"><Save size={18} /> {editingLink ? 'Update' : 'Add'}</button>
