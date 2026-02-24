@@ -1,0 +1,5 @@
+{
+  "name": "LinkVault",
+  "description": "A secure and beautiful link manager with local storage persistence and JSON backup capabilities.",
+  "requestFramePermissions": []
+}
