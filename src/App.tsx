@@ -185,18 +185,26 @@ export default function App() {
     reader.readAsText(file);
   };
 
-  const filteredOrgs = organizations.filter(org => 
-    org.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    org.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const normalizedOrgQuery = searchQuery.trim().toLowerCase();
+  const filteredOrgs = organizations.filter(org => {
+    if (!normalizedOrgQuery) return true;
+    return (
+      (org.name ?? '').toLowerCase().includes(normalizedOrgQuery) ||
+      (org.description ?? '').toLowerCase().includes(normalizedOrgQuery)
+    );
+  });
 
   const activeOrg = organizations.find(o => o.id === activeOrgId);
   const orgLinks = links.filter(l => l.orgId === activeOrgId);
-  const filteredLinks = orgLinks.filter(l => 
-    l.label.toLowerCase().includes(linkSearchQuery.toLowerCase()) ||
-    l.url.toLowerCase().includes(linkSearchQuery.toLowerCase()) ||
-    l.username.toLowerCase().includes(linkSearchQuery.toLowerCase())
-  );
+  const normalizedLinkQuery = linkSearchQuery.trim().toLowerCase();
+  const filteredLinks = orgLinks.filter(l => {
+    if (!normalizedLinkQuery) return true;
+    return (
+      (l.label ?? '').toLowerCase().includes(normalizedLinkQuery) ||
+      (l.url ?? '').toLowerCase().includes(normalizedLinkQuery) ||
+      (l.username ?? '').toLowerCase().includes(normalizedLinkQuery)
+    );
+  });
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
@@ -212,7 +220,7 @@ export default function App() {
           <div className="flex items-center gap-4">
             {activeOrgId && (
               <button 
-                onClick={() => setActiveOrgId(null)}
+                onClick={() => { setActiveOrgId(null); setLinkSearchQuery(''); }}
                 className="p-2 hover:bg-zinc-200 rounded-full transition-colors"
               >
                 <ArrowLeft size={24} />
@@ -283,7 +291,7 @@ export default function App() {
                       key={org.id}
                       layout
                       className="bg-white p-6 rounded-2xl border border-zinc-200 shadow-sm hover:shadow-md transition-all cursor-pointer group relative"
-                      onClick={() => setActiveOrgId(org.id)}
+                      onClick={() => { setActiveOrgId(org.id); setLinkSearchQuery(''); }}
                     >
                       <div className="flex items-start justify-between mb-4">
                         <div className="w-12 h-12 bg-zinc-100 rounded-xl flex items-center justify-center text-zinc-600 group-hover:bg-zinc-900 group-hover:text-white transition-colors">
@@ -336,10 +344,20 @@ export default function App() {
                 <input 
                   type="text" 
                   placeholder={`Search links in ${activeOrg?.name}...`} 
-                  className="w-full pl-12 pr-4 py-4 bg-white border border-zinc-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-zinc-900 outline-none transition-all"
+                  className="w-full pl-12 pr-12 py-4 bg-white border border-zinc-200 rounded-2xl shadow-sm focus:ring-2 focus:ring-zinc-900 outline-none transition-all"
                   value={linkSearchQuery}
                   onChange={(e) => setLinkSearchQuery(e.target.value)}
                 />
+                {linkSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setLinkSearchQuery('')}
+                    aria-label="Clear link search"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 p-1 text-zinc-400 hover:text-zinc-900 rounded-full hover:bg-zinc-100 transition-colors"
+                  >
+                    <X size={16} />
+                  </button>
+                )}
               </div>
 
               {/* Vertical Link List */}
@@ -433,9 +451,26 @@ export default function App() {
                   ))
                 ) : (
                   <div className="py-20 text-center bg-white rounded-3xl border border-zinc-100">
-                    <LinkIcon size={48} className="mx-auto text-zinc-200 mb-4" />
-                    <h3 className="text-xl font-semibold text-zinc-900">No links in this organization</h3>
-                    <p className="text-zinc-500">Click "Add Link" to populate this list.</p>
+                    {orgLinks.length > 0 && normalizedLinkQuery ? (
+                      <>
+                        <Search size={48} className="mx-auto text-zinc-200 mb-4" />
+                        <h3 className="text-xl font-semibold text-zinc-900">No matching links</h3>
+                        <p className="text-zinc-500 mb-4">No links in {activeOrg?.name} match "{linkSearchQuery}".</p>
+                        <button
+                          type="button"
+                          onClick={() => setLinkSearchQuery('')}
+                          className="btn-secondary mx-auto"
+                        >
+                          Clear search
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <LinkIcon size={48} className="mx-auto text-zinc-200 mb-4" />
+                        <h3 className="text-xl font-semibold text-zinc-900">No links in this organization</h3>
+                        <p className="text-zinc-500">Click "Add Link" to populate this list.</p>
+                      </>
+                    )}
                   </div>
                 )}
               </div>
